@@ -9,6 +9,7 @@
     "dev:server": "node server/index.js",
     "dev:client": "vite",
     "build": "vite build",
+    "postinstall": "vite build",
     "start": "node server/index.js"
   },
   "keywords": [
@@ -16,7 +17,6 @@
     "ai",
     "gemma",
     "action-planner",
-    "hacktoberfest",
     "productivity",
     "accessibility"
   ],
@@ -24,17 +24,17 @@
   "license": "MIT",
   "dependencies": {
     "@google/generative-ai": "^0.24.0",
+    "@vitejs/plugin-react": "^4.3.4",
     "canvas-confetti": "^1.9.4",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "lucide-react": "^1.16.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "vite": "^6.2.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
-    "concurrently": "^9.1.2",
-    "vite": "^6.2.0"
+    "concurrently": "^9.1.2"
   }
 }

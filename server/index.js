@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import {
   analyzeDocument,
@@ -120,23 +121,28 @@ app.post('/api/redact-preview', (req, res) => {
   res.json({ success: true, redacted });
 });
 
-// Production: serve built static client if present
-const distPath = path.join(__dirname, '..', 'dist');
+// Production: serve built static client from dist/
+const distPath = path.resolve(__dirname, '..', 'dist');
+const indexHtmlPath = path.join(distPath, 'index.html');
+const hasDist = fs.existsSync(indexHtmlPath);
+
 app.use(express.static(distPath));
 
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api')) {
     return next();
   }
-  res.sendFile(path.join(distPath, 'index.html'), (err) => {
-    if (err) {
-      res.status(200).send('LifePilot AI API is active. Run Vite dev server for frontend UI.');
-    }
-  });
+
+  if (fs.existsSync(indexHtmlPath)) {
+    res.sendFile(indexHtmlPath);
+  } else {
+    res.status(200).send('LifePilot AI API is active. Run Vite dev server or npm run build for frontend UI.');
+  }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   const status = getAIStatus();
-  console.log(`🧭 LifePilot AI Server running on http://localhost:${PORT}`);
+  console.log(`🧭 LifePilot AI Server running on http://0.0.0.0:${PORT}`);
+  console.log(`📦 Frontend dist: ${hasDist ? 'Ready (serving ' + distPath + ')' : 'MISSING (' + indexHtmlPath + ')'}`);
   console.log(`🤖 AI Engine: ${status.provider} [${status.model}] | Demo Mode: ${status.isDemo}`);
 });
