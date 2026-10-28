@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import HomeDashboard from './components/HomeDashboard';
 import SmartInput from './components/SmartInput';
-import DailyDashboard from './components/DailyDashboard';
-import UnderstandPanel from './components/UnderstandPanel';
-import ActionPlanner from './components/ActionPlanner';
-import FollowUpChat from './components/FollowUpChat';
+import AnalysisWorkspace from './components/AnalysisWorkspace';
 import SavedPlansDrawer from './components/SavedPlansDrawer';
+import SettingsModal from './components/SettingsModal';
 import Toast from './components/Toast';
 import { SAMPLE_PRESETS } from './utils/samples';
-import { ShieldCheck, Heart, Sparkles, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, AlertTriangle } from 'lucide-react';
 
 const LOCAL_STORAGE_KEY = 'lifepilot_saved_plans_v1';
 
@@ -16,6 +16,12 @@ export default function App() {
   const [language, setLanguage] = useState(() => localStorage.getItem('lifepilot_lang') || 'en');
   const [theme, setTheme] = useState(() => localStorage.getItem('lifepilot_theme') || 'light');
   const [fontSize, setFontSize] = useState(() => localStorage.getItem('lifepilot_font_size') || 'normal');
+
+  // Navigation & View state: 'home' | 'new-analysis' | 'workspace'
+  const [activeView, setActiveView] = useState('home');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const [aiStatus, setAiStatus] = useState(null);
   const [text, setText] = useState('');
@@ -29,7 +35,7 @@ export default function App() {
   const [isSavedDrawerOpen, setIsSavedDrawerOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
-  // Sync theme to document element
+  // Sync theme
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('lifepilot_theme', theme);
@@ -74,14 +80,13 @@ export default function App() {
     fetchStatus();
   }, []);
 
-  // Sync tasks changes back to currentPlan and savedPlans
+  // Sync task changes back to currentPlan and savedPlans
   const handleUpdateTasks = (newTasks) => {
     setTasks(newTasks);
     if (currentPlan) {
       const updatedPlan = { ...currentPlan, actionPlan: newTasks };
       setCurrentPlan(updatedPlan);
 
-      // Update in saved plans list
       const updatedList = savedPlans.map((p) => (p.id === currentPlan.id ? updatedPlan : p));
       setSavedPlans(updatedList);
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedList));
@@ -114,7 +119,7 @@ export default function App() {
       const planData = {
         ...json.data,
         id: `plan-${Date.now()}`,
-        title: text.slice(0, 45).replace(/\n/g, ' ') + '...',
+        title: text.slice(0, 48).replace(/\n/g, ' ') + '...',
         createdAt: new Date().toISOString(),
         originalText: text,
       };
@@ -122,21 +127,19 @@ export default function App() {
       setCurrentPlan(planData);
       setTasks(planData.actionPlan || []);
 
-      // Save to saved plans in localStorage
+      // Persist to saved plans
       const updatedList = [planData, ...savedPlans.filter((p) => p.id !== planData.id)].slice(0, 20);
       setSavedPlans(updatedList);
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedList));
 
+      // Switch to the split-screen Copilot Workspace!
+      setActiveView('workspace');
+
       setToastMessage(
         language === 'hi'
-          ? '✨ दस्तावेज़ का विश्लेषण पूरा हुआ और कार्य योजना तैयार है!'
-          : '✨ Analysis complete! Action plan generated.'
+          ? '✨ विश्लेषण पूरा हुआ! आपकी कार्य योजना तैयार है।'
+          : '✨ Analysis complete! Your action plan is ready.'
       );
-
-      // Scroll smoothly to dashboard
-      setTimeout(() => {
-        window.scrollTo({ top: 380, behavior: 'smooth' });
-      }, 100);
     } catch (err) {
       console.error('Analysis error:', err);
       setError(err.message || 'An error occurred while analyzing the document.');
@@ -145,16 +148,13 @@ export default function App() {
     }
   };
 
-  // Analyze new information button
-  const handleAnalyzeNew = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   // Load a saved plan
   const handleLoadPlan = (plan) => {
     setCurrentPlan(plan);
     setTasks(plan.actionPlan || []);
     setText(plan.originalText || '');
+    setActiveView('workspace');
+    setIsSavedDrawerOpen(false);
     setToastMessage(
       language === 'hi' ? `योजना "${plan.title}" लोड की गई` : `Plan "${plan.title}" loaded`
     );
@@ -168,8 +168,20 @@ export default function App() {
     if (currentPlan?.id === planId) {
       setCurrentPlan(null);
       setTasks([]);
+      setActiveView('home');
     }
     setToastMessage(language === 'hi' ? 'योजना हटाई गई' : 'Plan deleted');
+  };
+
+  // Navigation handlers
+  const handleNewAnalysis = () => {
+    setActiveView('new-analysis');
+    setError(null);
+  };
+
+  const handleSelectSample = (sample) => {
+    setText(sample.text);
+    setActiveView('new-analysis');
   };
 
   const toggleTheme = () => {
@@ -180,158 +192,147 @@ export default function App() {
     setFontSize((prev) => (prev === 'normal' ? 'large' : 'normal'));
   };
 
+  const handleSidebarNav = (viewId) => {
+    if (viewId === 'saved-plans') {
+      setIsSavedDrawerOpen(true);
+    } else {
+      setActiveView(viewId);
+    }
+  };
+
   const isHindi = language === 'hi';
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
-      <Header
-        language={language}
-        setLanguage={setLanguage}
-        theme={theme}
-        toggleTheme={toggleTheme}
-        fontSize={fontSize}
-        toggleFontSize={toggleFontSize}
-        aiStatus={aiStatus}
+    <div className="app-shell">
+      {/* 1. Collapsible Sidebar Navigation */}
+      <Sidebar
+        activeView={activeView}
+        setActiveView={handleSidebarNav}
+        collapsed={sidebarCollapsed}
+        setCollapsed={setSidebarCollapsed}
         savedCount={savedPlans.length}
-        onOpenSaved={() => setIsSavedDrawerOpen(true)}
+        language={language}
+        isMobileOpen={isMobileMenuOpen}
+        setIsMobileOpen={setIsMobileMenuOpen}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
-      {/* Main Body */}
-      <main style={{ flex: 1, padding: '2rem 0 3rem' }}>
-        <div className="container">
-          {/* Mission Hero Banner */}
-          <div style={{
-            textAlign: 'center',
-            marginBottom: '2rem',
-            padding: '1.25rem 1rem',
-          }}>
-            <h1 style={{
-              fontSize: '2.25rem',
-              fontWeight: 800,
-              letterSpacing: '-0.03em',
-              marginBottom: '0.45rem',
-            }}>
-              {isHindi
-                ? 'दैनिक जानकारी को स्पष्ट, संगठित कार्य योजनाओं में बदलें'
-                : 'Turn Everyday Information Into Organized Action'}
-            </h1>
-            <p style={{
-              fontSize: '1.1rem',
-              color: 'var(--text-secondary)',
-              maxWidth: '680px',
-              margin: '0 auto',
-            }}>
-              {isHindi
-                ? 'छात्रों, अभिभावकों और पेशेवरों के लिए सरल AI सहायक। कम उलझन, अधिक स्पष्टता, बेहतर कार्य।'
-                : 'Simple, grounded AI for students, parents, and workers. Less confusion, more clarity, better action.'}
-            </p>
-          </div>
+      {/* 2. Main App Content Wrapper */}
+      <div className="app-content">
+        {/* Top Header */}
+        <Header
+          language={language}
+          setLanguage={setLanguage}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          fontSize={fontSize}
+          toggleFontSize={toggleFontSize}
+          aiStatus={aiStatus}
+          savedCount={savedPlans.length}
+          onOpenSaved={() => setIsSavedDrawerOpen(true)}
+          onToggleMobileMenu={() => setIsMobileMenuOpen(true)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+        />
 
+        {/* Main Dashboard Viewport */}
+        <main className="dashboard-viewport">
           {/* Error Banner */}
           {error && (
             <div style={{
               backgroundColor: 'var(--danger-bg)',
               border: '1px solid var(--danger-border)',
               borderRadius: 'var(--radius-md)',
-              padding: '1rem 1.25rem',
-              marginBottom: '1.5rem',
+              padding: '0.9rem 1.2rem',
+              marginBottom: '1.25rem',
               display: 'flex',
               alignItems: 'center',
               gap: '0.75rem',
               color: 'var(--danger-text)',
             }}>
-              <AlertTriangle size={20} />
-              <div style={{ flex: 1, fontSize: '0.9rem' }}>
+              <AlertTriangle size={18} />
+              <div style={{ flex: 1, fontSize: '0.88rem' }}>
                 <strong>{isHindi ? 'त्रुटि:' : 'Error:'}</strong> {error}
               </div>
             </div>
           )}
 
-          {/* Daily Dashboard (always visible if tasks exist or above smart input) */}
-          {tasks.length > 0 && (
-            <DailyDashboard
+          {/* 1. Home View: Personal Productivity Dashboard */}
+          {activeView === 'home' && (
+            <HomeDashboard
+              savedPlans={savedPlans}
+              currentPlan={currentPlan}
               tasks={tasks}
-              onAnalyzeNew={handleAnalyzeNew}
+              onNewAnalysis={handleNewAnalysis}
+              onLoadPlan={handleLoadPlan}
+              onSelectSample={handleSelectSample}
               language={language}
             />
           )}
 
-          {/* Smart Input Component */}
-          <SmartInput
-            text={text}
-            setText={setText}
-            onAnalyze={handleAnalyze}
-            loading={loading}
-            language={language}
-            privacyRedact={privacyRedact}
-            setPrivacyRedact={setPrivacyRedact}
-          />
-
-          {/* Understand It Panel (when currentPlan exists) */}
-          {currentPlan && (
-            <UnderstandPanel
-              data={currentPlan}
-              language={language}
-            />
+          {/* 2. New Analysis: Clean AI Workspace */}
+          {activeView === 'new-analysis' && (
+            <div className="animate-fade-in" style={{ maxWidth: '880px', margin: '0 auto' }}>
+              <SmartInput
+                text={text}
+                setText={setText}
+                onAnalyze={handleAnalyze}
+                loading={loading}
+                language={language}
+                privacyRedact={privacyRedact}
+                setPrivacyRedact={setPrivacyRedact}
+              />
+            </div>
           )}
 
-          {/* Action Planner Component (when tasks exist) */}
-          {tasks.length > 0 && (
-            <ActionPlanner
+          {/* 3. Analysis Results: Dedicated Split-Screen AI Copilot */}
+          {activeView === 'workspace' && currentPlan && (
+            <AnalysisWorkspace
+              currentPlan={currentPlan}
               tasks={tasks}
               setTasks={handleUpdateTasks}
-              fullPlan={currentPlan}
+              originalText={text}
+              onNewAnalysis={handleNewAnalysis}
               language={language}
               onShowToast={setToastMessage}
             />
           )}
+        </main>
 
-          {/* Follow-up Questions Chat (when currentPlan exists) */}
-          {currentPlan && (
-            <FollowUpChat
-              documentText={text}
-              language={language}
-              onShowToast={setToastMessage}
-            />
-          )}
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer style={{
-        borderTop: '1px solid var(--border-color)',
-        backgroundColor: 'var(--bg-secondary)',
-        padding: '2rem 0',
-        marginTop: 'auto',
-      }}>
-        <div className="container" style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          fontSize: '0.85rem',
+        {/* Clean Application Footer */}
+        <footer style={{
+          borderTop: '1px solid var(--border-color)',
+          backgroundColor: 'var(--bg-secondary)',
+          padding: '1.25rem 1.75rem',
+          marginTop: 'auto',
+          fontSize: '0.82rem',
           color: 'var(--text-muted)',
         }}>
-          <div>
-            <strong>LifePilot AI</strong> — Hacktoberfest: AI for Everyone
-            <div style={{ fontSize: '0.78rem', marginTop: '0.2rem' }}>
-              Built with React, Vite, Node.js, and Google Gemma 4.
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '1rem',
+          }}>
+            <div>
+              <strong>Life Pilot AI</strong> — Less Confusion. More Clarity. Better Action.
+              <div style={{ fontSize: '0.75rem', marginTop: '0.15rem' }}>
+                Powered by Google Gemma 4 (<code>gemma-4-26b-a4b-it</code>).
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <ShieldCheck size={15} color="var(--success)" />
+                {isHindi ? 'गोपनीयता प्रथम: कोई डेटा सर्वर पर नहीं' : 'Privacy-First: Zero Server Data Retention'}
+              </span>
+              <span>MIT License</span>
             </div>
           </div>
+        </footer>
+      </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <ShieldCheck size={16} color="var(--success)" />
-              {isHindi ? 'गोपनीयता प्रथम: कोई दस्तावेज़ संग्रहीत नहीं' : 'Privacy First: No Documents Stored on Server'}
-            </span>
-            <span>MIT License</span>
-          </div>
-        </div>
-      </footer>
-
-      {/* Saved Plans Drawer Modal */}
+      {/* Saved Plans History Drawer Modal */}
       <SavedPlansDrawer
         isOpen={isSavedDrawerOpen}
         onClose={() => setIsSavedDrawerOpen(false)}
@@ -339,6 +340,19 @@ export default function App() {
         onLoadPlan={handleLoadPlan}
         onDeletePlan={handleDeletePlan}
         language={language}
+      />
+
+      {/* Preferences & Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        language={language}
+        setLanguage={setLanguage}
+        theme={theme}
+        toggleTheme={toggleTheme}
+        fontSize={fontSize}
+        toggleFontSize={toggleFontSize}
+        aiStatus={aiStatus}
       />
 
       {/* Non-blocking Toast Alerts */}

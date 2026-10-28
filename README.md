@@ -1,24 +1,30 @@
-# 🧭 LifePilot AI — Hacktoberfest: AI for Everyone
+# 🧭 Life Pilot AI
 
 > **"Less Confusion. More Clarity. Better Action."**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Hacktoberfest](https://img.shields.io/badge/Hacktoberfest-2026-orange.svg)](https://hacktoberfest.com/)
 [![React 18](https://img.shields.io/badge/React-18-61dafb.svg)](https://react.dev/)
 [![Node.js](https://img.shields.io/badge/Node.js-24+-339933.svg)](https://nodejs.org/)
-[![Google Gemma](https://img.shields.io/badge/AI-Google_Gemma_4-4285F4.svg)](https://ai.google.dev/gemma)
+[![Google Gemma](https://img.shields.io/badge/AI-Google_Gemma_4-4285F4.svg)](https://ai.google.dev/gemma/docs/core/gemma_on_gemini_api)
+[![Design](https://img.shields.io/badge/Design-shadcn%2Fui_Dashboard-000000.svg)](https://ui.shadcn.com/)
 
 ---
 
-## 🎯 Mission
+## 🎯 Mission & Product Identity
 
-Millions of students, parents, busy workers, and elderly citizens receive complex notices every day:
+Millions of students, parents, busy workers, and everyday users receive complex notices every day:
 - **School circulars** with hidden deadlines, fees, and dress rehearsal timings.
 - **Apartment association memos** announcing water cuts and elevator maintenance.
-- **Pre-surgery hospital sheets** with strict fasting schedules and blood thinner guidelines.
+- **Pre-surgery hospital sheets** with strict fasting schedules and medication guidelines.
 - **Freelance milestone agreements** with billing deadlines and tax conditions.
 
-Too often, critical steps are missed due to jargon and cognitive overload. **LifePilot AI** solves this by converting everyday text into **organized, understandable, and strictly grounded action plans** using **Google Gemma 4**.
+Too often, critical steps are missed due to jargon and cognitive overload. **Life Pilot AI** converts everyday text into **organized, understandable, and strictly grounded action plans** using **Google Gemma 4** (`gemma-4-26b-a4b-it`) hosted on the **Google Gemini API**.
+
+### Four Core Architecture Pillars
+1. **Personal Productivity Dashboard**: Live tracking of real pending tasks, completed tasks, upcoming deadlines, saved plans, and quick actions.
+2. **Clean AI Workspace**: Distraction-free document input with realistic sample prompts, character counter, and Privacy Shield.
+3. **Split-Screen AI Copilot**: Side-by-side view featuring the original document on the left and the AI breakdown, action checklist, and grounded Q&A on the right.
+4. **shadcn/ui-Inspired Design System**: Clean typography (Outfit & Plus Jakarta Sans), collapsible sidebar navigation, crisp cards, status badges, and subtle micro-animations.
 
 ---
 
@@ -80,7 +86,8 @@ Too often, critical steps are missed due to jargon and cognitive overload. **Lif
 | :--- | :--- |
 | **Frontend** | React 18, Vite 6, Vanilla CSS Design System, Lucide Icons, Canvas Confetti |
 | **Backend** | Node.js, Express, CORS, Dotenv, REST API |
-| **AI Integration** | Google Generative AI SDK (`@google/generative-ai`), Google Gemma 4 / Gemini API, Groq Cloud API |
+| **AI Integration** | Google Generative AI SDK (`@google/generative-ai`), Google Gemini API running **Gemma 4** (`gemma-4-26b-a4b-it`) |
+| **Official Docs** | [Run Gemma with the Gemini API](https://ai.google.dev/gemma/docs/core/gemma_on_gemini_api) |
 | **Security & Privacy** | Backend proxy prevents API key exposure; optional client-side PII redaction; zero cloud storage of user documents |
 | **Export Formats** | iCalendar (.ics), Markdown (.md), Clipboard Text |
 
@@ -105,23 +112,26 @@ Too often, critical steps are missed due to jargon and cognitive overload. **Lif
    ```bash
    npm install
    ```
-   *(On Windows PowerShell, use `npm.cmd install` if execution policies restrict `.ps1` scripts)*
+   *(On Windows PowerShell, use `npm.cmd install` if script execution policies are enabled)*
 
 3. **Configure Environment Variables**:
-   Copy the `.env.example` template:
+   Copy `.env.example` to `.env`:
    ```bash
    cp .env.example .env
    ```
-   Open `.env` and add your credentials:
+   Open `.env` and set your Google Gemini API key:
    ```env
    PORT=3001
-   GEMINI_API_KEY=your_gemini_or_gemma_api_key_here
-   AI_MODEL=gemini-2.0-flash
+   GEMINI_API_KEY=your_gemini_api_key_here
+   AI_MODEL=gemma-4-26b-a4b-it
    FALLBACK_TO_DEMO=true
    ```
 
-> **Note on Live vs Demo Mode:**
-> LifePilot AI includes a **Smart Built-in Simulation Engine**. If no API key is configured or the network is unavailable, the application runs seamlessly in **Demo Mode**, displaying a clear warning badge as required by privacy and reliability guidelines.
+   - **Get a Key**: Obtain a free Google Gemini API key from [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
+   - **Supported Gemma 4 Models on Gemini API**:
+     - `gemma-4-26b-a4b-it` (Default: 26B/4B active MoE with thinking)
+     - `gemma-4-31b-it` (31B parameter dense)
+   - **Offline Demo Mode**: If `GEMINI_API_KEY` is not provided, LifePilot automatically runs in safe **Demo Mode (Offline)** using built-in presets and heuristics. Live status is only declared when an actual API request succeeds.
 
 ---
 
@@ -131,6 +141,7 @@ Too often, critical steps are missed due to jargon and cognitive overload. **Lif
 ```bash
 npm run dev
 ```
+*(On Windows PowerShell: `npm.cmd run dev`)*
 - Client runs on: `http://localhost:5173`
 - Backend API runs on: `http://localhost:3001` (proxied automatically)
 
@@ -139,6 +150,7 @@ npm run dev
 npm run build
 npm start
 ```
+*(On Windows PowerShell: `npm.cmd run build` then `npm.cmd start`)*
 Open your browser to:
 👉 **`http://localhost:3001`**
 
@@ -146,19 +158,21 @@ Open your browser to:
 
 ## 🧪 Testing the Application
 
-An automated end-to-end verification script is included to test all API routes, groundings, and bilingual responses:
+An automated end-to-end verification script is included to test all API routes, groundings, privacy redaction, and error handling:
 
 ```bash
 node test_e2e.js
 ```
 
 ### Verified Test Suites:
-1. `GET /api/health` — Provider health and model status
+1. `GET /api/health` — Provider health and honest model status reporting
 2. `GET /api/samples` — Availability of pre-curated presets
 3. `POST /api/analyze` (English) — Summary, dates/amounts chips, uncertainties, and prioritized checklist
 4. `POST /api/analyze` (Hindi) — Native Devanagari output with localized action items
 5. `POST /api/chat` — Grounded follow-up Q&A and citation defense
-6. `GET /` — Production frontend bundle serving
+6. `POST /api/redact-preview` — Sensitive PII redaction (email, phone, credit card)
+7. `POST /api/analyze` (Validation) — Graceful handling of empty input and text < 10 characters
+8. `GET /` — Production frontend bundle serving
 
 ---
 

@@ -115,12 +115,66 @@ Sub: 15th Annual Day Celebration & Term II Fee Clearance
     process.exit(1);
   }
 
-  // 6. Test Frontend Serving
-  console.log('6️⃣ Testing Frontend HTML Serving...');
+  // 6. Test Privacy Redaction Helper
+  console.log('6️⃣ Testing /api/redact-preview...');
+  try {
+    const redactRes = await fetch(`${BASE_URL}/api/redact-preview`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: 'Contact me at john.doe@example.com or call 9876543210 regarding invoice.',
+      }),
+    });
+    const redactData = await redactRes.json();
+    if (!redactData.success || !redactData.redacted.includes('[REDACTED_EMAIL]')) {
+      throw new Error('Privacy redaction failed');
+    }
+    console.log('   Redacted output:', redactData.redacted);
+    console.log('   ✅ Privacy redaction helper passed!\n');
+  } catch (e) {
+    console.error('   ❌ Privacy redaction error:', e.message);
+    process.exit(1);
+  }
+
+  // 7. Test Graceful Error Handling (Empty & Short Input)
+  console.log('7️⃣ Testing Graceful Error Handling (Empty & Short input)...');
+  try {
+    const emptyRes = await fetch(`${BASE_URL}/api/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: '' }),
+    });
+    if (emptyRes.status !== 400) throw new Error('Expected 400 for empty text');
+    const emptyJson = await emptyRes.json();
+    console.log('   Empty text rejection:', emptyJson.error);
+
+    const shortRes = await fetch(`${BASE_URL}/api/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: 'Too short' }),
+    });
+    if (shortRes.status !== 400) throw new Error('Expected 400 for text < 10 chars');
+    const shortJson = await shortRes.json();
+    console.log('   Short text rejection:', shortJson.error);
+
+    const badChatRes = await fetch(`${BASE_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documentText: 'Some doc', question: '' }),
+    });
+    if (badChatRes.status !== 400) throw new Error('Expected 400 for missing question');
+    console.log('   ✅ Graceful error handling validated!\n');
+  } catch (e) {
+    console.error('   ❌ Error handling test error:', e.message);
+    process.exit(1);
+  }
+
+  // 8. Test Frontend Serving
+  console.log('8️⃣ Testing Frontend HTML Serving...');
   try {
     const frontendRes = await fetch(`${BASE_URL}/`);
     const html = await frontendRes.text();
-    if (!html.includes('LifePilot AI')) throw new Error('Frontend does not contain LifePilot title');
+    if (!html.includes('Life Pilot AI') && !html.includes('LifePilot AI')) throw new Error('Frontend does not contain Life Pilot AI title');
     console.log('   HTML size:', html.length, 'bytes');
     console.log('   ✅ Frontend static serving passed!\n');
   } catch (e) {
@@ -128,7 +182,87 @@ Sub: 15th Annual Day Celebration & Term II Fee Clearance
     process.exit(1);
   }
 
-  console.log('🎉 ALL 6 VERIFICATION SUITES PASSED FLAWLESSLY!');
+  // 9. Robust JSON Parser & Output Validation Test Suite
+  console.log('9️⃣ Testing Gemma 4 JSON Parser & Validation Suite...');
+  try {
+    const { parseJsonResponse, validateAnalysisData, validateChatData } = await import('./server/aiService.js');
+
+    // Case A: Fenced JSON with preceding thinking text (Gemma 4 thinking model output)
+    const thinkingFenced = `* Input received.
+* Analyzing constraints and generating plan...
+* Key requirement: { "temp": true } in scratchpad.
+\`\`\`json
+{
+  "summary": "This is a verified test summary.",
+  "facts": ["Fact 1", "Fact 2"],
+  "datesAndAmounts": [{"label": "Deposit Due", "value": "Nov 15", "type": "date"}],
+  "uncertainties": ["Check room number"],
+  "actionPlan": [{"id": "t1", "title": "Submit fee", "description": "Pay at room 102", "priority": "High", "deadline": "2026-11-15", "status": "pending", "category": "Finance"}]
+}
+\`\`\``;
+    const parsedA = parseJsonResponse(thinkingFenced);
+    validateAnalysisData(parsedA);
+    if (parsedA.summary !== 'This is a verified test summary.' || parsedA.actionPlan.length !== 1) {
+      throw new Error('Case A failed: thinking fenced extraction');
+    }
+    console.log('   ✅ Case A passed: Fenced JSON with preceding thinking text');
+
+    // Case B: Raw clean JSON without markdown code fences
+    const rawClean = JSON.stringify({
+      summary: 'Clean raw JSON without any markdown code fences.',
+      facts: ['Explicit fact'],
+      actionPlan: [{ id: '1', title: 'Task 1' }],
+    });
+    const parsedB = parseJsonResponse(rawClean);
+    validateAnalysisData(parsedB);
+    if (parsedB.summary !== 'Clean raw JSON without any markdown code fences.') {
+      throw new Error('Case B failed: clean raw JSON');
+    }
+    console.log('   ✅ Case B passed: Clean raw JSON (no fences)');
+
+    // Case C: Raw JSON with preceding thinking text (no code fences)
+    const thinkingRaw = `* Internal reasoning trace...
+* Draft bracket: { "scratch": 1 }
+* Final Output:
+{
+  "summary": "Thinking raw summary",
+  "facts": [],
+  "actionPlan": []
+}`;
+    const parsedC = parseJsonResponse(thinkingRaw);
+    validateAnalysisData(parsedC);
+    if (parsedC.summary !== 'Thinking raw summary') {
+      throw new Error('Case C failed: thinking raw JSON');
+    }
+    console.log('   ✅ Case C passed: Preceding thinking with raw JSON');
+
+    // Case D: Malformed JSON must throw error (not silently pass)
+    let malformedCaught = false;
+    try {
+      parseJsonResponse('Here is your answer without any valid JSON structure at all: hello world.');
+    } catch (err) {
+      malformedCaught = true;
+    }
+    if (!malformedCaught) throw new Error('Case D failed: malformed JSON did not throw error');
+    console.log('   ✅ Case D passed: Malformed JSON rejected cleanly');
+
+    // Case E: Chat data validation
+    const validChat = validateChatData({
+      answer: 'The deadline is November 15 according to the notice.',
+      facts: ['Notice specifies Nov 15 deadline'],
+    });
+    if (validChat.answer.length === 0 || validChat.inDocument !== true) {
+      throw new Error('Case E failed: chat validation');
+    }
+    console.log('   ✅ Case E passed: Grounded chat validation');
+
+    console.log('   ✅ Gemma 4 Parser & Validation Suite passed!\n');
+  } catch (e) {
+    console.error('   ❌ JSON Parser test error:', e.message);
+    process.exit(1);
+  }
+
+  console.log('🎉 ALL 9 VERIFICATION SUITES PASSED FLAWLESSLY!');
 }
 
 testLifePilot();

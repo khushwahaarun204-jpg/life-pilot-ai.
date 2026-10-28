@@ -5,9 +5,15 @@ import { SAMPLES } from './sampleData.js';
 dotenv.config();
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
-const DEFAULT_MODEL = process.env.AI_MODEL || 'gemini-2.0-flash';
+const DEFAULT_MODEL = process.env.AI_MODEL || 'gemma-4-26b-a4b-it';
 const FALLBACK_TO_DEMO = process.env.FALLBACK_TO_DEMO !== 'false';
+
+// Track real live API verification state (never claim "Gemma 4 Live" without a verified response)
+let liveVerificationState = {
+  verified: false,
+  lastChecked: null,
+  error: null,
+};
 
 // Helper to sanitize and redact sensitive info if requested
 export function redactSensitiveData(text) {
@@ -21,29 +27,41 @@ export function redactSensitiveData(text) {
   return redacted;
 }
 
-// Get provider status for health check
+// Get provider status for health check - strictly honest, never fakes live status
 export function getAIStatus() {
   if (GEMINI_API_KEY) {
-    return {
-      configured: true,
-      provider: 'Google Gemini / Gemma API',
-      model: DEFAULT_MODEL,
-      isDemo: false,
-    };
-  } else if (GROQ_API_KEY) {
-    return {
-      configured: true,
-      provider: 'Groq Cloud (Gemma)',
-      model: 'gemma2-9b-it',
-      isDemo: false,
-    };
+    if (liveVerificationState.verified) {
+      return {
+        configured: true,
+        provider: 'Google Gemini API (Gemma 4)',
+        model: DEFAULT_MODEL,
+        isDemo: false,
+        isLive: true,
+        statusLabel: 'Gemma 4 Live',
+        note: `Live Gemma 4 model (${DEFAULT_MODEL}) verified and active via Gemini API`,
+      };
+    } else {
+      return {
+        configured: true,
+        provider: 'Google Gemini API (Gemma 4)',
+        model: DEFAULT_MODEL,
+        isDemo: false,
+        isLive: false,
+        statusLabel: 'Gemma 4 (Key Configured)',
+        note: liveVerificationState.error
+          ? `Gemma 4 API Notice: ${liveVerificationState.error}`
+          : `API key configured for ${DEFAULT_MODEL}. Run an analysis to verify live inference.`,
+      };
+    }
   } else {
     return {
       configured: false,
       provider: 'Built-in Demo Engine',
-      model: 'gemma-4-simulation-engine',
+      model: 'No API Key — Offline Demo Mode',
       isDemo: true,
-      note: 'Provide GEMINI_API_KEY in .env to activate live Google Gemma inference',
+      isLive: false,
+      statusLabel: 'Demo Mode (Offline)',
+      note: `Provide GEMINI_API_KEY in .env to connect to live Gemma 4 (${DEFAULT_MODEL}) via Gemini API.`,
     };
   }
 }
@@ -56,62 +74,54 @@ export async function analyzeDocument({ text, language = 'en', privacyRedact = f
 
   const processedText = privacyRedact ? redactSensitiveData(text) : text;
 
-  // Check if live API is available
+  // 1. Try Google Gemini API with Gemma 4 (gemma-4-26b-a4b-it)
   if (GEMINI_API_KEY) {
     try {
-      const result = await analyzeWithGemini(processedText, language);
+      const result = await analyzeWithGemma4(processedText, language);
+      liveVerificationState.verified = true;
+      liveVerificationState.lastChecked = new Date().toISOString();
+      liveVerificationState.error = null;
+
       return {
         success: true,
         data: result,
-        provider: 'Google Gemini / Gemma API',
+        provider: 'Google Gemini API (Gemma 4)',
         model: DEFAULT_MODEL,
         isDemo: false,
+        isLive: true,
       };
     } catch (err) {
-      console.warn('Gemini API call failed, evaluating fallback:', err.message);
+      liveVerificationState.verified = false;
+      liveVerificationState.error = err.message;
+      console.warn('Gemma 4 API call failed, evaluating fallback:', err.message);
+
       if (!FALLBACK_TO_DEMO) {
-        throw new Error(`AI inference failed: ${err.message}`);
+        throw new Error(`Gemma 4 AI inference failed: ${err.message}`);
       }
     }
   }
 
-  if (GROQ_API_KEY) {
-    try {
-      const result = await analyzeWithGroq(processedText, language);
-      return {
-        success: true,
-        data: result,
-        provider: 'Groq Cloud (gemma2-9b-it)',
-        model: 'gemma2-9b-it',
-        isDemo: false,
-      };
-    } catch (err) {
-      console.warn('Groq API call failed, evaluating fallback:', err.message);
-      if (!FALLBACK_TO_DEMO) {
-        throw new Error(`AI inference failed: ${err.message}`);
-      }
-    }
-  }
-
-  // Fallback to Smart Built-in Engine
+  // 2. Fallback to Smart Built-in Engine (clearly identified as Demo Mode)
   const smartResult = generateSmartDemoAnalysis(processedText, language);
   return {
     success: true,
     data: smartResult,
-    provider: 'Built-in Demo Engine (Gemma 4 Heuristics)',
-    model: 'gemma-4-local',
+    provider: 'Built-in Demo Engine (Local Heuristics)',
+    model: 'offline-demo',
     isDemo: true,
-    note: 'Demo mode active. To connect to live Gemma 4 / Gemini API, set GEMINI_API_KEY in .env file.',
+    isLive: false,
+    note: GEMINI_API_KEY
+      ? `Live Gemma 4 request failed (${liveVerificationState.error}). Displaying local demo fallback.`
+      : `Demo mode active. To connect live Gemma 4 (${DEFAULT_MODEL}), set GEMINI_API_KEY in .env file.`,
   };
 }
 
-// Gemini analysis implementation
-async function analyzeWithGemini(text, language) {
+// Gemma 4 analysis implementation via Gemini API
+async function analyzeWithGemma4(text, language) {
   const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
   const model = genAI.getGenerativeModel({
-    model: DEFAULT_MODEL,
+    model: DEFAULT_MODEL, // gemma-4-26b-a4b-it
     generationConfig: {
-      responseMimeType: 'application/json',
       temperature: 0.2, // Low temperature for maximum grounding and strict factuality
     },
   });
@@ -120,40 +130,8 @@ async function analyzeWithGemini(text, language) {
   const response = await model.generateContent(prompt);
   const responseText = response.response.text();
 
-  return parseJsonResponse(responseText);
-}
-
-// Groq API implementation for Gemma
-async function analyzeWithGroq(text, language) {
-  const prompt = buildAnalysisPrompt(text, language);
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${GROQ_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'gemma2-9b-it',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are LifePilot AI. Output strict JSON only. Do not hallucinate.',
-        },
-        { role: 'user', content: prompt },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.2,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`Groq API Error: ${response.status} ${errorBody}`);
-  }
-
-  const json = await response.json();
-  const content = json.choices?.[0]?.message?.content;
-  return parseJsonResponse(content);
+  const parsed = parseJsonResponse(responseText);
+  return validateAnalysisData(parsed);
 }
 
 // Prompt builder with strict grounding instructions
@@ -174,6 +152,7 @@ CRITICAL RELIABILITY & PRIVACY RULES:
 3. UNCERTAINTIES: If anything is unclear, ambiguous, missing, or needs user confirmation, explicitly list it under "uncertainties".
 4. ACTION PLAN DEADLINES: Only attach a deadline to a task if a specific date or cutoff is explicitly mentioned or clearly stated in the source. If none is given, set "deadline": null.
 5. ${langInstruction}
+6. OUTPUT REQUIREMENT: Output your completed JSON object inside a \`\`\`json ... \`\`\` code block.
 
 Return a valid JSON object matching this exact structure:
 {
@@ -207,20 +186,101 @@ ${text}
 """`;
 }
 
-// Helper to parse JSON safely
-function parseJsonResponse(rawText) {
-  try {
-    let clean = rawText.trim();
-    if (clean.startsWith('```json')) {
-      clean = clean.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    } else if (clean.startsWith('```')) {
-      clean = clean.replace(/^```\s*/, '').replace(/\s*```$/, '');
-    }
-    return JSON.parse(clean);
-  } catch (err) {
-    console.error('Failed to parse JSON response:', rawText);
-    throw new Error('AI returned an invalid JSON response format.');
+// Helper to parse JSON safely from model output, handling thinking preamble and markdown fences
+export function parseJsonResponse(rawText) {
+  if (!rawText || typeof rawText !== 'string' || !rawText.trim()) {
+    throw new Error('AI returned an empty response.');
   }
+
+  const trimmed = rawText.trim();
+
+  // Strategy 1: Direct JSON parse (fast path for clean, raw JSON)
+  try {
+    const direct = JSON.parse(trimmed);
+    if (typeof direct === 'object' && direct !== null) {
+      return direct;
+    }
+  } catch (e) {
+    // Continue to extraction strategies
+  }
+
+  // Strategy 2: Extract from Markdown code fence (e.g. ```json ... ``` or ``` ... ```)
+  // Search for code blocks from the end backwards (since models output thinking first and the final JSON block last)
+  const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/gi;
+  const matches = [...trimmed.matchAll(codeBlockRegex)];
+  if (matches.length > 0) {
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const candidate = matches[i][1].trim();
+      try {
+        const parsed = JSON.parse(candidate);
+        if (typeof parsed === 'object' && parsed !== null) {
+          return parsed;
+        }
+      } catch (e) {
+        // Continue searching
+      }
+    }
+  }
+
+  // Strategy 3: Find outermost balanced JSON object in the text
+  // Scan backwards from the last closing brace to find the valid matching opening brace
+  const lastBraceIdx = trimmed.lastIndexOf('}');
+  if (lastBraceIdx !== -1) {
+    for (let i = 0; i < lastBraceIdx; i++) {
+      if (trimmed[i] === '{') {
+        const candidate = trimmed.substring(i, lastBraceIdx + 1).trim();
+        try {
+          const parsed = JSON.parse(candidate);
+          if (typeof parsed === 'object' && parsed !== null) {
+            return parsed;
+          }
+        } catch (e) {
+          // Keep scanning
+        }
+      }
+    }
+  }
+
+  console.error('Failed to parse JSON response. Raw output was:\n', rawText);
+  throw new Error('AI returned an invalid JSON response format.');
+}
+
+// Validate parsed analysis structure
+export function validateAnalysisData(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('AI returned invalid analysis data (expected an object).');
+  }
+  if (!data.summary || typeof data.summary !== 'string' || !data.summary.trim()) {
+    throw new Error('AI response is missing required "summary" text.');
+  }
+  if (!Array.isArray(data.actionPlan)) {
+    throw new Error('AI response is missing required "actionPlan" list.');
+  }
+
+  // Ensure optional array fields are safe arrays
+  if (!Array.isArray(data.facts)) data.facts = [];
+  if (!Array.isArray(data.datesAndAmounts)) data.datesAndAmounts = [];
+  if (!Array.isArray(data.uncertainties)) data.uncertainties = [];
+
+  return data;
+}
+
+// Validate parsed chat structure
+export function validateChatData(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('AI returned invalid chat data (expected an object).');
+  }
+  if (!data.answer || typeof data.answer !== 'string' || !data.answer.trim()) {
+    throw new Error('AI chat response is missing required "answer" text.');
+  }
+
+  if (!Array.isArray(data.facts)) data.facts = [];
+  if (!Array.isArray(data.suggestions)) data.suggestions = [];
+  if (typeof data.inDocument !== 'boolean') {
+    data.inDocument = data.facts.length > 0;
+  }
+
+  return data;
 }
 
 // Grounded Follow-up Q&A function
@@ -229,18 +289,50 @@ export async function answerFollowUpQuestion({ documentText, question, history =
     throw new Error('Both document text and question are required.');
   }
 
+  // 1. Try Google Gemini API with Gemma 4 (gemma-4-26b-a4b-it)
   if (GEMINI_API_KEY) {
     try {
       const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
       const model = genAI.getGenerativeModel({
-        model: DEFAULT_MODEL,
+        model: DEFAULT_MODEL, // gemma-4-26b-a4b-it
         generationConfig: {
-          responseMimeType: 'application/json',
           temperature: 0.2,
         },
       });
 
-      const prompt = `You are LifePilot AI. The user is asking a follow-up question about the following document.
+      const prompt = buildChatPrompt(documentText, question, language);
+      const response = await model.generateContent(prompt);
+      const parsed = parseJsonResponse(response.response.text());
+      const validated = validateChatData(parsed);
+
+      liveVerificationState.verified = true;
+      liveVerificationState.lastChecked = new Date().toISOString();
+      liveVerificationState.error = null;
+
+      return {
+        ...validated,
+        isDemo: false,
+        isLive: true,
+        provider: 'Google Gemini API (Gemma 4)',
+        model: DEFAULT_MODEL,
+      };
+    } catch (err) {
+      liveVerificationState.verified = false;
+      liveVerificationState.error = err.message;
+      console.warn('Gemma 4 chat API call failed, using smart fallback:', err.message);
+
+      if (!FALLBACK_TO_DEMO) {
+        throw new Error(`Gemma 4 chat API failed: ${err.message}`);
+      }
+    }
+  }
+
+  // 2. Offline grounded Q&A heuristic fallback
+  return generateSmartDemoQnA(documentText, question, language);
+}
+
+function buildChatPrompt(documentText, question, language) {
+  return `You are LifePilot AI. The user is asking a follow-up question about the following document.
 GROUNDING INSTRUCTIONS:
 1. Ground your answer strictly in the provided document.
 2. If the document explicitly contains the answer, cite the facts under "facts".
@@ -253,7 +345,7 @@ Format your response as a valid JSON object:
   "answer": "Direct, empathetic answer",
   "facts": ["Specific fact from text"],
   "suggestions": ["Optional helpful advice or next step"],
-  "inDocument": true | false
+  "inDocument": true
 }
 
 DOCUMENT:
@@ -263,22 +355,6 @@ ${documentText}
 
 USER QUESTION:
 "${question}"`;
-
-      const response = await model.generateContent(prompt);
-      const parsed = parseJsonResponse(response.response.text());
-      return {
-        ...parsed,
-        isDemo: false,
-        provider: 'Google Gemini / Gemma API',
-      };
-    } catch (err) {
-      console.warn('Gemini chat failed, using smart fallback:', err.message);
-      if (!FALLBACK_TO_DEMO) throw err;
-    }
-  }
-
-  // Offline grounded Q&A heuristic
-  return generateSmartDemoQnA(documentText, question, language);
 }
 
 // Smart heuristic analyzer for fallback / demo mode
@@ -411,7 +487,7 @@ function generateSmartDemoQnA(documentText, question, language = 'en') {
       ],
       inDocument: true,
       isDemo: true,
-      provider: 'Built-in Grounding Engine',
+      provider: 'Built-in Demo Engine (Local Heuristics)',
     };
   }
 
@@ -428,6 +504,6 @@ function generateSmartDemoQnA(documentText, question, language = 'en') {
     ],
     inDocument: false,
     isDemo: true,
-    provider: 'Built-in Grounding Engine',
+    provider: 'Built-in Demo Engine (Local Heuristics)',
   };
 }

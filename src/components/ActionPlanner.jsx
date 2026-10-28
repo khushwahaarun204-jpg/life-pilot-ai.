@@ -6,12 +6,9 @@ import {
   Calendar,
   Clock,
   Download,
-  Share2,
   Copy,
   Check,
   Filter,
-  AlertCircle,
-  Edit2,
   Sparkles,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -27,13 +24,16 @@ export default function ActionPlanner({
   const isHindi = language === 'hi';
   const [filter, setFilter] = useState('all'); // all, pending, completed, high
   const [isAddingTask, setIsAddingTask] = useState(false);
-  const [editingTaskId, setEditingTaskId] = useState(null);
 
   // New task form state
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newPriority, setNewPriority] = useState('Medium');
   const [newDeadline, setNewDeadline] = useState('');
+
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter((t) => t.status === 'completed').length;
+  const percentComplete = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   // Toggle task completion
   const handleToggleTask = (id) => {
@@ -133,22 +133,22 @@ export default function ActionPlanner({
   });
 
   return (
-    <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.75rem' }}>
-      {/* Header & Export Tools */}
+    <div className="ui-card animate-fade-in" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+      {/* Top Header & Export Toolbar */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
         gap: '0.75rem',
-        marginBottom: '1.25rem',
+        marginBottom: '1rem',
         borderBottom: '1px solid var(--border-color)',
-        paddingBottom: '0.9rem',
+        paddingBottom: '0.85rem',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           <div style={{
-            width: '32px',
-            height: '32px',
+            width: '34px',
+            height: '34px',
             borderRadius: 'var(--radius-sm)',
             backgroundColor: 'var(--success-bg)',
             color: 'var(--success-text)',
@@ -159,22 +159,23 @@ export default function ActionPlanner({
             <CheckSquare size={18} />
           </div>
           <div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>
-              {isHindi ? 'कार्य योजना और चेकलिस्ट (Action Planner)' : 'Action Planner — Interactive Checklist'}
-            </h2>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              {isHindi ? 'व्यवस्थित कदम, प्राथमिकताओं और समय-सीमाओं के साथ' : 'Prioritized next steps with verified deadlines'}
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+              {isHindi ? 'आपकी कार्य योजना' : 'Your Action Plan'}
+            </h3>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              {isHindi ? 'सत्यापित प्राथमिकताओं व तिथियों के साथ' : 'Prioritized checklist with verified deadlines'}
             </span>
           </div>
         </div>
 
         {/* Action Buttons: Add Task & Exports */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
           <button
             onClick={() => setIsAddingTask(!isAddingTask)}
             className="btn btn-secondary btn-sm"
+            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem' }}
           >
-            <Plus size={15} />
+            <Plus size={14} />
             <span>{isHindi ? 'कार्य जोड़ें' : 'Add Task'}</span>
           </button>
 
@@ -182,28 +183,69 @@ export default function ActionPlanner({
             onClick={handleCopy}
             className="btn btn-outline btn-sm"
             title={isHindi ? 'चेकलिस्ट कॉपी करें' : 'Copy checklist to clipboard'}
+            style={{ padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}
           >
-            <Copy size={15} />
+            <Copy size={13} />
             <span>{isHindi ? 'कॉपी' : 'Copy'}</span>
           </button>
 
           <button
             onClick={handleExportICS}
             className="btn btn-outline btn-sm"
-            title={isHindi ? 'Google/Apple कैलेंडर में जोड़ें (.ics)' : 'Export to Calendar (.ics)'}
+            title={isHindi ? 'कैलेंडर फाइल (.ics)' : 'Export to Calendar (.ics)'}
+            style={{ padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}
           >
-            <Calendar size={15} />
-            <span>{isHindi ? 'कैलेंडर (.ics)' : 'Calendar (.ics)'}</span>
+            <Calendar size={13} />
+            <span>{isHindi ? '.ics' : '.ics'}</span>
           </button>
 
           <button
             onClick={handleExportMarkdown}
             className="btn btn-outline btn-sm"
             title={isHindi ? 'मार्कडाउन डाउनलोड करें' : 'Download as Markdown'}
+            style={{ padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}
           >
-            <Download size={15} />
-            <span>{isHindi ? 'डाउनलोड' : 'Export'}</span>
+            <Download size={13} />
+            <span>{isHindi ? 'MD' : 'MD'}</span>
           </button>
+        </div>
+      </div>
+
+      {/* Progress Indicator */}
+      <div style={{
+        backgroundColor: 'var(--bg-primary)',
+        padding: '0.75rem 1rem',
+        borderRadius: 'var(--radius-sm)',
+        border: '1px solid var(--border-color)',
+        marginBottom: '1rem',
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: '0.8rem',
+          marginBottom: '0.35rem',
+        }}>
+          <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+            {isHindi ? 'प्रगति:' : 'Progress:'} {completedTasks} / {totalTasks} {isHindi ? 'पूर्ण' : 'completed'}
+          </span>
+          <span style={{ fontWeight: 700, color: 'var(--primary)' }}>
+            {percentComplete}%
+          </span>
+        </div>
+        <div style={{
+          width: '100%',
+          height: '6px',
+          backgroundColor: 'var(--bg-tertiary)',
+          borderRadius: '9999px',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            width: `${percentComplete}%`,
+            height: '100%',
+            backgroundColor: percentComplete === 100 ? 'var(--success)' : 'var(--primary)',
+            transition: 'width 0.3s ease',
+          }} />
         </div>
       </div>
 
@@ -211,14 +253,10 @@ export default function ActionPlanner({
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '0.4rem',
+        gap: '0.35rem',
         marginBottom: '1rem',
         flexWrap: 'wrap',
       }}>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem', marginRight: '0.3rem' }}>
-          <Filter size={14} />
-          {isHindi ? 'फ़िल्टर:' : 'Filter:'}
-        </span>
         {[
           { key: 'all', label: isHindi ? 'सभी' : 'All', count: tasks.length },
           { key: 'pending', label: isHindi ? 'लंबित' : 'Pending', count: tasks.filter((t) => t.status !== 'completed').length },
@@ -231,17 +269,12 @@ export default function ActionPlanner({
             className={`btn btn-sm ${filter === item.key ? 'btn-primary' : 'btn-ghost'}`}
             style={{
               padding: '0.25rem 0.65rem',
-              fontSize: '0.8rem',
+              fontSize: '0.78rem',
               borderRadius: 'var(--radius-full)',
             }}
           >
             <span>{item.label}</span>
-            <span style={{
-              fontSize: '0.72rem',
-              opacity: 0.8,
-              marginLeft: '0.2rem',
-              fontWeight: 700,
-            }}>
+            <span style={{ fontSize: '0.72rem', opacity: 0.85, marginLeft: '0.25rem', fontWeight: 700 }}>
               ({item.count})
             </span>
           </button>
@@ -253,20 +286,20 @@ export default function ActionPlanner({
         <form
           onSubmit={handleAddTask}
           style={{
-            backgroundColor: 'var(--bg-secondary)',
+            backgroundColor: 'var(--bg-primary)',
             border: '1px solid var(--border-focus)',
             borderRadius: 'var(--radius-md)',
-            padding: '1.1rem',
-            marginBottom: '1.25rem',
+            padding: '1rem',
+            marginBottom: '1rem',
           }}
           className="animate-fade-in"
         >
-          <div style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--primary)' }}>
-            {isHindi ? 'नया कार्य जोड़ें' : 'Add New Custom Step'}
+          <div style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.65rem', color: 'var(--primary)' }}>
+            {isHindi ? 'नया कार्य जोड़ें' : 'Add New Task'}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.65rem', marginBottom: '0.65rem' }}>
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '0.2rem' }}>
                 {isHindi ? 'कार्य शीर्षक *' : 'Task Title *'}
               </label>
               <input
@@ -274,41 +307,43 @@ export default function ActionPlanner({
                 required
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                placeholder={isHindi ? 'उदा: बैंक जाकर चेक जमा करें' : 'e.g. Call school coordinator'}
+                placeholder={isHindi ? 'उदा: फीस रसीद प्राप्त करें' : 'e.g. Call office for confirmation'}
                 style={{
                   width: '100%',
-                  padding: '0.5rem 0.75rem',
+                  padding: '0.45rem 0.65rem',
                   borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border-color)',
-                  background: 'var(--bg-tertiary)',
+                  background: 'var(--bg-secondary)',
                   color: 'var(--text-primary)',
+                  fontSize: '0.85rem',
                 }}
               />
             </div>
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '0.2rem' }}>
                 {isHindi ? 'संक्षिप्त विवरण' : 'Description'}
               </label>
               <input
                 type="text"
                 value={newDesc}
                 onChange={(e) => setNewDesc(e.target.value)}
-                placeholder={isHindi ? 'कार्य का विवरण' : 'Instructions or extra detail'}
+                placeholder={isHindi ? 'विवरण या संदर्भ' : 'Optional notes'}
                 style={{
                   width: '100%',
-                  padding: '0.5rem 0.75rem',
+                  padding: '0.45rem 0.65rem',
                   borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border-color)',
-                  background: 'var(--bg-tertiary)',
+                  background: 'var(--bg-secondary)',
                   color: 'var(--text-primary)',
+                  fontSize: '0.85rem',
                 }}
               />
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginBottom: '0.9rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.65rem', marginBottom: '0.75rem' }}>
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '0.2rem' }}>
                 {isHindi ? 'प्राथमिकता' : 'Priority'}
               </label>
               <select
@@ -316,11 +351,12 @@ export default function ActionPlanner({
                 onChange={(e) => setNewPriority(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '0.5rem 0.75rem',
+                  padding: '0.45rem 0.65rem',
                   borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border-color)',
-                  background: 'var(--bg-tertiary)',
+                  background: 'var(--bg-secondary)',
                   color: 'var(--text-primary)',
+                  fontSize: '0.85rem',
                 }}
               >
                 <option value="High">{isHindi ? 'उच्च (High)' : 'High'}</option>
@@ -329,8 +365,8 @@ export default function ActionPlanner({
               </select>
             </div>
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>
-                {isHindi ? 'समय-सीमा (वैकल्पिक)' : 'Deadline (Optional)'}
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, display: 'block', marginBottom: '0.2rem' }}>
+                {isHindi ? 'समय-सीमा' : 'Deadline'}
               </label>
               <input
                 type="date"
@@ -338,11 +374,12 @@ export default function ActionPlanner({
                 onChange={(e) => setNewDeadline(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '0.5rem 0.75rem',
+                  padding: '0.45rem 0.65rem',
                   borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border-color)',
-                  background: 'var(--bg-tertiary)',
+                  background: 'var(--bg-secondary)',
                   color: 'var(--text-primary)',
+                  fontSize: '0.85rem',
                 }}
               />
             </div>
@@ -353,29 +390,30 @@ export default function ActionPlanner({
               type="button"
               onClick={() => setIsAddingTask(false)}
               className="btn btn-ghost btn-sm"
+              style={{ fontSize: '0.8rem' }}
             >
               {isHindi ? 'रद्द करें' : 'Cancel'}
             </button>
-            <button type="submit" className="btn btn-primary btn-sm">
+            <button type="submit" className="btn btn-primary btn-sm" style={{ fontSize: '0.8rem' }}>
               {isHindi ? 'सहेजें' : 'Save Task'}
             </button>
           </div>
         </form>
       )}
 
-      {/* Task List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+      {/* Compact, Readable Task Rows */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
         {filteredTasks.length === 0 ? (
           <div style={{
             padding: '2rem',
             textAlign: 'center',
             color: 'var(--text-muted)',
-            backgroundColor: 'var(--bg-secondary)',
+            backgroundColor: 'var(--bg-primary)',
             borderRadius: 'var(--radius-md)',
             border: '1px dashed var(--border-color)',
           }}>
-            <p style={{ margin: 0, fontSize: '0.9rem' }}>
-              {isHindi ? 'इस फ़िल्टर के तहत कोई कार्य नहीं मिला।' : 'No tasks match the selected filter.'}
+            <p style={{ margin: 0, fontSize: '0.88rem' }}>
+              {isHindi ? 'इस फ़िल्टर में कोई कार्य नहीं है।' : 'No tasks match the selected filter.'}
             </p>
           </div>
         ) : (
@@ -395,65 +433,59 @@ export default function ActionPlanner({
                   display: 'flex',
                   alignItems: 'flex-start',
                   justifyContent: 'space-between',
-                  padding: '0.9rem 1.1rem',
-                  backgroundColor: isDone ? 'var(--bg-tertiary)' : 'var(--bg-secondary)',
-                  border: `1px solid ${isDone ? 'transparent' : 'var(--border-color)'}`,
-                  borderRadius: 'var(--radius-md)',
-                  transition: 'all 0.2s',
-                  opacity: isDone ? 0.7 : 1,
-                  gap: '0.85rem',
+                  padding: '0.75rem 0.95rem',
+                  backgroundColor: isDone ? 'var(--bg-primary)' : 'var(--bg-secondary)',
+                  border: `1px solid ${isDone ? 'var(--border-color)' : 'var(--border-color)'}`,
+                  borderRadius: 'var(--radius-sm)',
+                  transition: 'all 0.15s ease',
+                  opacity: isDone ? 0.65 : 1,
+                  gap: '0.75rem',
                 }}
                 className="animate-fade-in"
               >
                 {/* Checkbox and Content */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem', flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', flex: 1, minWidth: 0 }}>
                   <input
                     type="checkbox"
                     checked={isDone}
                     onChange={() => handleToggleTask(task.id)}
                     className="task-checkbox"
-                    style={{ marginTop: '0.2rem' }}
+                    style={{ marginTop: '0.15rem' }}
                     aria-label={`Mark "${task.title}" as complete`}
                   />
 
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
                       <span style={{
-                        fontSize: '0.98rem',
+                        fontSize: '0.92rem',
                         fontWeight: 600,
                         color: 'var(--text-primary)',
                         textDecoration: isDone ? 'line-through' : 'none',
+                        wordBreak: 'break-word',
                       }}>
                         {task.title}
                       </span>
 
                       {/* Priority Badge */}
-                      <span className={`badge ${priorityClass}`} style={{ fontSize: '0.68rem' }}>
-                        {task.priority}
+                      <span className={`badge ${priorityClass}`} style={{ fontSize: '0.68rem', padding: '0.15rem 0.5rem' }}>
+                        {task.priority || 'Medium'}
                       </span>
 
                       {/* Deadline Badge */}
                       {task.deadline && (
-                        <span className="badge badge-primary" style={{ fontSize: '0.68rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                        <span className="badge badge-primary" style={{ fontSize: '0.68rem', padding: '0.15rem 0.5rem' }}>
                           <Calendar size={11} />
                           <span>{task.deadline}</span>
-                        </span>
-                      )}
-
-                      {/* Category */}
-                      {task.category && (
-                        <span className="badge badge-neutral" style={{ fontSize: '0.65rem' }}>
-                          {task.category}
                         </span>
                       )}
                     </div>
 
                     {task.description && (
                       <p style={{
-                        fontSize: '0.84rem',
+                        fontSize: '0.8rem',
                         color: 'var(--text-secondary)',
-                        margin: '0.3rem 0 0 0',
-                        lineHeight: 1.45,
+                        margin: '0.25rem 0 0 0',
+                        lineHeight: 1.4,
                         textDecoration: isDone ? 'line-through' : 'none',
                       }}>
                         {task.description}
@@ -468,13 +500,13 @@ export default function ActionPlanner({
                   className="btn btn-ghost btn-sm"
                   style={{
                     color: 'var(--text-muted)',
-                    padding: '0.3rem',
-                    borderRadius: 'var(--radius-sm)',
+                    padding: '0.25rem',
+                    flexShrink: 0,
                   }}
                   title={isHindi ? 'हटाएं' : 'Delete task'}
                   aria-label="Delete task"
                 >
-                  <Trash2 size={15} />
+                  <Trash2 size={14} />
                 </button>
               </div>
             );

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   MessageSquare,
   Send,
-  HelpCircle,
   CheckCircle,
   Lightbulb,
   AlertCircle,
@@ -19,19 +18,17 @@ export default function FollowUpChat({
   const [chatLog, setChatLog] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Quick prompt suggestions
+  // Suggested questions specified in Phase 8
   const suggestedQuestions = isHindi
     ? [
-        'सबसे पहली अंतिम तिथि क्या है?',
-        'क्या कोई जुर्माना या विलंब शुल्क है?',
-        'मुझे किससे और कब संपर्क करना चाहिए?',
-        'कौन सी जानकारी दस्तावेज में स्पष्ट नहीं है?',
+        'समय-सीमा क्या है?',
+        'मुझे क्या करने की आवश्यकता है?',
+        'कौन सी फीस या राशियां उल्लिखित हैं?',
       ]
     : [
-        'What is the very first deadline?',
-        'Are there any penalties or extra fees mentioned?',
-        'Who do I contact for questions or support?',
-        'What requirements are not clearly stated?',
+        'What is the deadline?',
+        'What do I need to do?',
+        'What fees are mentioned?',
       ];
 
   const handleAsk = async (queryToAsk) => {
@@ -82,13 +79,27 @@ export default function FollowUpChat({
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleAsk();
+    }
+  };
+
   return (
-    <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
-      {/* Title */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem' }}>
+    <div className="ui-card animate-fade-in" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+      {/* Title & Subtitle */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.65rem',
+        marginBottom: '1rem',
+        borderBottom: '1px solid var(--border-color)',
+        paddingBottom: '0.85rem',
+      }}>
         <div style={{
-          width: '32px',
-          height: '32px',
+          width: '34px',
+          height: '34px',
           borderRadius: 'var(--radius-sm)',
           backgroundColor: 'var(--primary-light)',
           color: 'var(--primary)',
@@ -99,22 +110,31 @@ export default function FollowUpChat({
           <MessageSquare size={18} />
         </div>
         <div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>
-            {isHindi ? 'दस्तावेज़ से जुड़े प्रश्न पूछें (Follow-up Questions)' : 'Ask Grounded Follow-up Questions'}
-          </h2>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+            {isHindi ? 'एक प्रश्न पूछें' : 'Ask a question'}
+          </h3>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             {isHindi
-              ? 'सख्त तथ्यात्मक उत्तर — केवल दस्तावेज़ में दी गई जानकारी के आधार पर'
-              : 'Grounded strictly in your source — distinguishing verified facts from suggestions'}
+              ? 'आपके द्वारा प्रदान की गई जानकारी के आधार पर उत्तर प्राप्त करें।'
+              : 'Get answers based on the information you provided.'}
           </span>
         </div>
       </div>
 
       {/* Suggested Quick Question Chips */}
-      <div style={{ marginBottom: '1.1rem' }}>
-        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.45rem' }}>
-          {isHindi ? '💡 त्वरित प्रश्न सुझाव:' : '💡 Quick questions to try:'}
-        </span>
+      <div style={{ marginBottom: '1rem' }}>
+        <div style={{
+          fontSize: '0.78rem',
+          fontWeight: 600,
+          color: 'var(--text-muted)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.35rem',
+          marginBottom: '0.45rem',
+        }}>
+          <Sparkles size={13} color="var(--primary)" />
+          <span>{isHindi ? 'सुझाए गए प्रश्न:' : 'Suggested questions:'}</span>
+        </div>
         <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
           {suggestedQuestions.map((sq, idx) => (
             <button
@@ -142,7 +162,7 @@ export default function FollowUpChat({
           marginBottom: '1rem',
           display: 'flex',
           flexDirection: 'column',
-          gap: '0.9rem',
+          gap: '0.85rem',
           padding: '0.5rem 0',
         }}>
           {chatLog.map((msg, idx) => {
@@ -154,10 +174,10 @@ export default function FollowUpChat({
                     alignSelf: 'flex-end',
                     backgroundColor: 'var(--primary)',
                     color: '#fff',
-                    padding: '0.65rem 1rem',
+                    padding: '0.65rem 0.95rem',
                     borderRadius: '16px 16px 2px 16px',
-                    maxWidth: '80%',
-                    fontSize: '0.9rem',
+                    maxWidth: '82%',
+                    fontSize: '0.88rem',
                     boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
                   }}
                   className="animate-fade-in"
@@ -179,7 +199,7 @@ export default function FollowUpChat({
                     padding: '0.75rem 1rem',
                     borderRadius: '16px 16px 16px 2px',
                     maxWidth: '85%',
-                    fontSize: '0.88rem',
+                    fontSize: '0.85rem',
                     border: '1px solid var(--danger-border)',
                   }}
                 >
@@ -196,12 +216,12 @@ export default function FollowUpChat({
                 key={idx}
                 style={{
                   alignSelf: 'flex-start',
-                  backgroundColor: 'var(--bg-secondary)',
+                  backgroundColor: 'var(--bg-primary)',
                   border: '1px solid var(--border-color)',
                   borderRadius: '16px 16px 16px 2px',
-                  padding: '1rem 1.15rem',
-                  maxWidth: '90%',
-                  fontSize: '0.9rem',
+                  padding: '0.95rem 1.1rem',
+                  maxWidth: '92%',
+                  fontSize: '0.88rem',
                   boxShadow: 'var(--shadow-sm)',
                 }}
                 className="animate-fade-in"
@@ -211,12 +231,12 @@ export default function FollowUpChat({
                   {inDocument ? (
                     <span className="badge badge-success" style={{ fontSize: '0.68rem' }}>
                       <CheckCircle size={12} />
-                      <span>{isHindi ? 'मूल दस्तावेज़ से सत्यापित' : 'Verified in Source Document'}</span>
+                      <span>{isHindi ? 'दस्तावेज़ में मिला' : 'Found in document'}</span>
                     </span>
                   ) : (
                     <span className="badge badge-warning" style={{ fontSize: '0.68rem' }}>
                       <AlertCircle size={12} />
-                      <span>{isHindi ? 'दस्तावेज़ में अनुपलब्ध - मार्गदर्शन' : 'Not Stated in Document (Guidance)'}</span>
+                      <span>{isHindi ? 'दस्तावेज़ में अनुपलब्ध' : 'Not found in document'}</span>
                     </span>
                   )}
                   {provider && (
@@ -231,7 +251,7 @@ export default function FollowUpChat({
                   {answer}
                 </p>
 
-                {/* Verified Facts Cited */}
+                {/* Verified Facts Cited (Found in document) */}
                 {facts.length > 0 && (
                   <div style={{
                     backgroundColor: 'var(--success-bg)',
@@ -239,10 +259,10 @@ export default function FollowUpChat({
                     borderRadius: 'var(--radius-sm)',
                     padding: '0.5rem 0.75rem',
                     marginBottom: '0.5rem',
-                    fontSize: '0.82rem',
+                    fontSize: '0.8rem',
                   }}>
                     <strong style={{ color: 'var(--success-text)', display: 'block', marginBottom: '0.2rem' }}>
-                      {isHindi ? 'सत्यापित उद्धरण:' : 'Document Citations:'}
+                      {isHindi ? 'दस्तावेज़ से सत्यापित तथ्य:' : 'Verified facts from document:'}
                     </strong>
                     <ul style={{ margin: 0, paddingLeft: '1.1rem', color: 'var(--success-text)' }}>
                       {facts.map((f, fIdx) => (
@@ -252,18 +272,18 @@ export default function FollowUpChat({
                   </div>
                 )}
 
-                {/* Differentiated Suggestions */}
+                {/* Differentiated Practical Suggestions */}
                 {suggestions.length > 0 && (
                   <div style={{
                     backgroundColor: 'var(--primary-light)',
                     border: '1px solid var(--primary-border)',
                     borderRadius: 'var(--radius-sm)',
                     padding: '0.5rem 0.75rem',
-                    fontSize: '0.82rem',
+                    fontSize: '0.8rem',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--primary)', fontWeight: 700, marginBottom: '0.2rem' }}>
                       <Lightbulb size={13} />
-                      <span>{isHindi ? 'व्यावहारिक सुझाव / सलाह (अनुशंसा):' : 'Practical Suggestion / Next Step (Advice):'}</span>
+                      <span>{isHindi ? 'व्यावहारिक सुझाव (मार्गदर्शन):' : 'Practical suggestion:'}</span>
                     </div>
                     <ul style={{ margin: 0, paddingLeft: '1.1rem', color: 'var(--text-primary)' }}>
                       {suggestions.map((s, sIdx) => (
@@ -280,59 +300,62 @@ export default function FollowUpChat({
             <div style={{
               alignSelf: 'flex-start',
               padding: '0.65rem 1rem',
-              backgroundColor: 'var(--bg-secondary)',
+              backgroundColor: 'var(--bg-primary)',
               borderRadius: 'var(--radius-md)',
               border: '1px solid var(--border-color)',
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
-              fontSize: '0.85rem',
+              fontSize: '0.825rem',
               color: 'var(--text-muted)',
             }}>
-              <Sparkles size={16} className="animate-spin" />
+              <Sparkles size={15} className="animate-spin" />
               <span>{isHindi ? 'दस्तावेज़ की जांच कर रहे हैं...' : 'Checking document facts...'}</span>
             </div>
           )}
         </div>
       )}
 
-      {/* Input Field */}
+      {/* Input Composer */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
           handleAsk();
         }}
-        style={{ display: 'flex', gap: '0.5rem' }}
+        style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}
       >
         <input
           type="text"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder={
             isHindi
-              ? 'दस्तावेज़ के बारे में कोई भी प्रश्न पूछें...'
-              : 'Ask any specific question about your notice or instructions...'
+              ? 'इस दस्तावेज़ के बारे में कोई भी प्रश्न पूछें... (Enter दबाएं)'
+              : 'Ask any question about this document... (Press Enter to send)'
           }
           disabled={loading}
           style={{
             flex: 1,
-            padding: '0.75rem 1rem',
+            padding: '0.65rem 0.95rem',
             borderRadius: 'var(--radius-md)',
             border: '1px solid var(--border-color)',
-            background: 'var(--bg-secondary)',
+            background: 'var(--bg-primary)',
             color: 'var(--text-primary)',
-            fontSize: '0.9rem',
+            fontSize: '0.88rem',
+            lineHeight: 1.4,
           }}
-          aria-label="Ask follow-up question"
+          aria-label="Ask a question about this document"
         />
+
         <button
           type="submit"
           disabled={loading || !question.trim()}
-          className="btn btn-primary"
-          style={{ padding: '0.75rem 1.25rem' }}
+          className="btn btn-primary btn-sm"
+          style={{ padding: '0.65rem 1rem', height: '100%' }}
+          aria-label="Send question"
         >
-          <Send size={16} />
-          <span>{isHindi ? 'पूछें' : 'Ask'}</span>
+          <Send size={15} />
         </button>
       </form>
     </div>
